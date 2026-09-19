@@ -77,7 +77,7 @@ The production stack is two Render services — a static frontend (`weathergpt-w
 
 **Shelter routing drawn in-app — real road distance and ETA per mode.**
 
-![In-app shelter routing on the map](docs/screenshots/map-routing.jpg)
+![In-app shelter routing on the map](docs/screenshots/map-routing.png)
 
 **Judge demo console — re-bend live weather into five scenarios and watch the whole app react (SIMULATED banner on, ESTIMATE labels everywhere).**
 
