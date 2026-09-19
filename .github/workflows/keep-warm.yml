@@ -36,6 +36,7 @@ jobs:
           for URL in \
             "https://weather-gpt-1-ze0n.onrender.com/health" \
             "https://kisanprofit-api.onrender.com/health" \
+            "https://travelguard-api.onrender.com/health" \
           ; do
             code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 90 "$URL" || echo 000)
             echo "$URL -> $code"
