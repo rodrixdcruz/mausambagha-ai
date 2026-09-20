@@ -20,7 +20,7 @@ questions grounded strictly in that data; and a safety layer surfaces
 status, alerts and checklists. The core weather + risk + safety stack
 works entirely without any AI service or paid API.
 
-**Live deployment:** [weathergpt-web.onrender.com](https://weathergpt-web.onrender.com)
+**Live deployment:** [mausambagha-web.onrender.com](https://mausambagha-web.onrender.com)
 (free tier — the first request after ~15 min idle may take ~30 s to wake the API).
 
 ## Highlights
@@ -439,7 +439,7 @@ the judge account can pass the `scenario` parameter — regular/demo logins
 silently get real data. The account is configured with `AUTH_JUDGE_*`
 settings (`AUTH_JUDGE_ENABLED=false` disables it) and, like admin/demo, is
 seeded idempotently at startup. **The deployment at
-[weathergpt-web.onrender.com](https://weathergpt-web.onrender.com) uses a
+[mausambagha-web.onrender.com](https://mausambagha-web.onrender.com) uses a
 rotated judge password** — if the default doesn't work there, that's why;
 self-hosted instances use the default.
 

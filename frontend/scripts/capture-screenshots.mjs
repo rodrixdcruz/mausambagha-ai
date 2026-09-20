@@ -12,7 +12,7 @@
 import puppeteer from 'puppeteer-core'
 
 const CHROME = 'C:/Program Files/Google/Chrome/Application/chrome.exe'
-const BASE = process.env.BASE || 'https://weathergpt-web.onrender.com'
+const BASE = process.env.BASE || 'https://mausambagha-web.onrender.com'
 const JPASS = process.env.JPASS || 'judge123'
 const OUT = '../docs/screenshots'
 const VIEWPORT = { width: 1440, height: 900, deviceScaleFactor: 1 }

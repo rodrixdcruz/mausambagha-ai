@@ -126,7 +126,7 @@ services:
       # comma-separated list makes the app fail to start with a SettingsError —
       # which then looks like "Failed to fetch" in the browser.
       - key: CORS_ORIGINS
-        value: '["https://weathergpt-web.onrender.com"]'
+        value: '["https://mausambagha-web.onrender.com"]'
 
       # --- Weather data (key-less Open-Meteo) ---------------------------------
       - key: WEATHER_PROVIDER

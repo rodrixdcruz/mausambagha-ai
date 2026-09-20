@@ -34,7 +34,7 @@ jobs:
           # runs under load and its runs were arriving hours late (observed
           # 2026-09-19: 3h+ gaps). Doubling up here is the documented fix.
           for URL in \
-            "https://weather-gpt-1-ze0n.onrender.com/health" \
+            "https://mausambagha-api.onrender.com/health" \
             "https://kisanprofit-api.onrender.com/health" \
             "https://travelguard-api.onrender.com/health" \
           ; do

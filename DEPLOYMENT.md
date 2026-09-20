@@ -3,7 +3,7 @@
 How MausamBagha AI ships from Git to the live site, how to deploy by hand, and how to undo a bad deploy. Everything here reflects the production setup as of 2026-09-18 and uses commands that were actually run against it.
 
 **Repository:** `https://github.com/rodrixdcruz/mausambagha-ai` (branch `main`)
-**Live site:** https://weathergpt-web.onrender.com (frontend) → https://weather-gpt-1-ze0n.onrender.com (API)
+**Live site:** https://mausambagha-web.onrender.com (frontend) → https://mausambagha-api.onrender.com (API)
 
 ---
 
@@ -103,8 +103,8 @@ curl -s -H "$AUTH" "$API_BASE/services/$BACKEND/deploys?limit=10" \
 Run after any deploy that matters (frontend deploys need only 1, 6, 7):
 
 ```bash
-API=https://weather-gpt-1-ze0n.onrender.com
-WEB=https://weathergpt-web.onrender.com
+API=https://mausambagha-api.onrender.com
+WEB=https://mausambagha-web.onrender.com
 ```
 
 | # | Check | Command / expectation |
@@ -120,7 +120,7 @@ WEB=https://weathergpt-web.onrender.com
 ## 6 · Known gotchas (read once, save an hour)
 
 - **autoDeploy was flipped via API on 2026-09-18 but didn't fire until a manual deploy re-registered the service.** If pushes stop producing deploy rows again, do one Manual Deploy from the dashboard — that re-arms it. The next real `backend/` push after this runbook is the proof it stays armed.
-- **`render.yaml` is partially stale.** Its `VITE_API_BASE_URL` names `weathergpt-api.onrender.com`, which does not exist; the deployed frontend bundle actually calls `weather-gpt-1-ze0n.onrender.com` (dashboard env wins over Blueprint values). If you ever re-sync the Blueprint, fix that value first or the frontend will point at a dead host.
+- **`render.yaml` is partially stale.** Its `VITE_API_BASE_URL` names `weathergpt-api.onrender.com`, which does not exist; the deployed frontend bundle actually calls `mausambagha-api.onrender.com` (dashboard env wins over Blueprint values). If you ever re-sync the Blueprint, fix that value first or the frontend will point at a dead host.
 - **Auth seeding gotcha:** `AUTH_*_PASSWORD` env vars only seed *new* account rows. If a row already exists (e.g. restored Neon dump), the stored hash wins — rotate by updating the row (see the 2026-09-18 rotation) or deleting the row and restarting.
 - **Neon role password ≠ app passwords.** The `DATABASE_URL` credential is separate; if it's ever exposed, reset it in the Neon dashboard and update `DATABASE_URL` on Render (env change → auto redeploy).
 - **Backend deploys pick up code only when `backend/` files change** — README/docs pushes intentionally don't redeploy it.
