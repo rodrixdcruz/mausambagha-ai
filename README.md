@@ -411,10 +411,10 @@ authorized and role-resolved from the session token (not from the client).
 
 ## Judge demo walkthrough
 
-**🎬 Prefer watching?** A 2½-minute recorded tour of **every feature** —
+**🎬 Prefer watching?** A 2-minute recorded tour of **every feature** —
 sign-in, live weather, explainable risks, the risk gauge, grounded AI chat
 with the 3D presenter, the 7-day forecast, shelter map + walking directions,
-the SOS modal, the guided feature tour, and the demo console driving all five
+the SOS modal, and the demo console driving all five
 weather scenarios — is in the repo:
 [`docs/demo/mausambagha-demo.mp4`](docs/demo/mausambagha-demo.mp4).
 
