@@ -411,6 +411,11 @@ authorized and role-resolved from the session token (not from the client).
 
 ## Judge demo walkthrough
 
+**🎬 Prefer watching?** A 72-second recorded walkthrough of the judge
+experience — sign-in, dashboard, the demo console driving all five weather
+scenarios, and shelter directions — is in the repo:
+[`docs/demo/mausambagha-demo.mp4`](docs/demo/mausambagha-demo.mp4).
+
 The app ships a special **judge account** for reviewers and evaluators:
 sign in as `judge` (default password `judge123`) — you'll see the full
 citizen dashboard, no role pick needed, plus two extras no other account gets:
