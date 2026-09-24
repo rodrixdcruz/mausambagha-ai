@@ -49,6 +49,22 @@ const cast = []                              // { at, png } — one per bucket
 let lastKeptAt = 0
 let decoding = Promise.resolve()
 await cdp.send('Page.startScreencast', { format: 'png', everyNthFrame: 1, maxWidth: 1280, maxHeight: 800 })
+
+// Keep the screencast alive: it only pushes frames on repaint, and once the
+// view scrolls away from the animated 3D presenter the page can go fully
+// static (scenario segments would vanish from the video). A tiny invisible
+// blinking overlay forces a cheap repaint ~2x/s. CRITICAL: it must be
+// re-injected after every navigation — page.goto() destroys it.
+const ensureTicker = () => page.evaluate(() => {
+  if (!document.body || document.getElementById('tg-repaint-ticker')) return
+  const el = document.createElement('div')
+  el.id = 'tg-repaint-ticker'
+  el.style.cssText = 'position:fixed;bottom:0;right:0;width:2px;height:2px;z-index:99999;opacity:0.01;'
+  document.body.appendChild(el)
+  let on = false
+  setInterval(() => { on = !on; el.style.opacity = on ? '0.02' : '0.01' }, 500)
+})
+await ensureTicker()
 cdp.on('Page.screencastFrame', (f) => {
   cdp.send('Page.screencastFrameAck', { sessionId: f.sessionId }).catch(() => {})
   const at = Date.now()
@@ -73,32 +89,38 @@ const clickText = (txt) => page.evaluate((t) => {
   if (el) { el.click(); return true }
   return false
 }, txt)
-const tourEl = (id) => page.evaluate((tid) => {
+const tourEl = async (id) => { await ensureTicker(); return page.evaluate((tid) => {
   const el = document.querySelector(`[data-tour="${tid}"]`)
-  if (el) el.scrollIntoView({ block: 'center' })
+  if (el) { el.scrollIntoView({ block: 'center' }); window.scrollBy(0, -40) }
   return !!el
-}, id)
+}, id) }
 const abort = async (code, msg) => {
   console.error(msg)
   await browser.close()
   process.exit(code)
 }
 
-// ── 1. Login page + judge sign-in ──────────────────────────────────────────
-await page.goto(`${BASE}/`, { waitUntil: 'networkidle2', timeout: 90000 })
-await sleep(5000)                                     // branded login page
-await page.type('input[autocomplete="username"]', USER, { delay: 60 })
-await page.type('input[type="password"]', PASS, { delay: 40 })
-await clickText('judge')
-await sleep(1500)
-await page.evaluate(() => {
-  const btn = [...document.querySelectorAll('button')].find((b) => /sign in|login/i.test(b.innerText))
-  if (btn) btn.click()
-})
-await sleep(8000)
-const onDashboard = await page.evaluate(() =>
-  !document.querySelector('input[type="password"]') && document.body.innerText.length > 200)
+// ── 1. Login page + judge sign-in (retry: cold API can eat the first try) ──
+let onDashboard = false
+for (let attempt = 1; attempt <= 2 && !onDashboard; attempt++) {
+  await page.goto(`${BASE}/`, { waitUntil: 'networkidle2', timeout: 90000 })
+  await ensureTicker()                                // navigation destroyed it
+  await sleep(9000)                                   // branded login page (long hold)
+  await page.type('input[autocomplete="username"]', USER, { delay: 60 })
+  await page.type('input[type="password"]', PASS, { delay: 40 })
+  await clickText('judge')
+  await sleep(1500)
+  await page.evaluate(() => {
+    const btn = [...document.querySelectorAll('button')].find((b) => /sign in|login/i.test(b.innerText))
+    if (btn) btn.click()
+  })
+  await sleep(attempt === 1 ? 8000 : 14000)           // 2nd try: even more slack
+  onDashboard = await page.evaluate(() =>
+    !document.querySelector('input[type="password"]') && document.body.innerText.length > 200)
+  if (!onDashboard) console.error(`login attempt ${attempt} did not complete`)
+}
 if (!onDashboard) await abort(2, 'LOGIN FAILED — abort')
+await ensureTicker()
 
 // The judge session auto-fires the guided feature tour — dismiss it so the
 // dashboard is captured unobstructed (replayable in-app via the ✨ button).
@@ -114,12 +136,13 @@ if (await page.evaluate(() => !!document.querySelector('[role="dialog"]'))) {
 }
 if (await page.evaluate(() => !!document.querySelector('[role="dialog"]')))
   await abort(5, 'FEATURE TOUR WOULD NOT DISMISS — abort')
+await ensureTicker()
 
-// ── 2–9. Every feature, in tour order ─────────────────────────────────────
+// ── 2–9. Every feature, in tour order — LONG dwells for a fuller video ────
 for (const id of ['weather', 'risk-cards', 'risk-gauge']) {
   const ok = await tourEl(id)
   if (!ok) console.error(`feature section missing: ${id}`)
-  await sleep(4500)
+  await sleep(9000)
 }
 // 5. AI chat: ask a real question, let the grounded answer + 3D presenter show
 await tourEl('chat')
@@ -128,38 +151,67 @@ const chatInput = await page.$('[data-tour="chat"] input')
 if (chatInput) {
   await chatInput.type('What should I do today?', { delay: 40 })
   await page.keyboard.press('Enter')
-  await sleep(12000)                                  // answer streams in
+  await sleep(15000)                                  // answer streams in
+  await chatInput.type('Is it safe to go outside?', { delay: 40 })
+  await page.keyboard.press('Enter')
+  await sleep(15000)                                  // second grounded answer
 } else console.error('chat input not found')
 // 6. Forecast
-await tourEl('forecast'); await sleep(4500)
+await tourEl('forecast'); await sleep(9000)
 // 7. Shelter map + list + walking directions
-await tourEl('shelter-map'); await sleep(4500)
-await tourEl('shelter-list'); await sleep(2500)
+await tourEl('shelter-map'); await sleep(9000)
+await tourEl('shelter-list'); await sleep(4000)
 const dirsClicked = await clickText('directions') || await clickText('route')
-await sleep(9000)
-if (dirsClicked) { await page.keyboard.press('Escape'); await sleep(1500) }
-// 8. SOS modal
+await sleep(12000)
+if (dirsClicked) { await page.keyboard.press('Escape'); await sleep(2000) }
+// 8. SOS modal — click the exact [data-tour] target, VERIFY the overlay is
+// up (the modal is dark-themed so pixels can't prove it), close via its
+// Cancel button (SosModal has no Escape handler — Escape is a no-op).
+await ensureTicker()
 await tourEl('sos')
-await clickText('sos')
-await sleep(4500)
-await page.keyboard.press('Escape')
+const modalUp = () => page.evaluate(() =>
+  !!document.querySelector('[role="dialog"]') ||
+  !!document.querySelector('div[class*="bg-black/60"]'))
+let sosOpened = false
+for (let i = 0; i < 2 && !sosOpened; i++) {
+  sosOpened = await page.evaluate(() => {
+    const sos = document.querySelector('[data-tour="sos"]') ||
+      [...document.querySelectorAll('button')].find((b) => b.innerText.trim().toLowerCase() === 'sos')
+    if (!sos) return false
+    sos.click()
+    return true
+  })
+  if (sosOpened) { await sleep(2500); sosOpened = await modalUp() }
+  if (!sosOpened) { await clickText('sos'); await sleep(2500); sosOpened = await modalUp() }
+}
+if (!sosOpened) await abort(6, 'SOS MODAL NEVER OPENED — abort')
+await sleep(7000)                                    // modal + contacts visible
+await page.evaluate(() => {
+  const btn = [...document.querySelectorAll('button')].find((b) =>
+    /^cancel$/i.test(b.innerText.trim()) || /^close$/i.test(b.innerText.trim()))
+  if (btn) btn.click()
+})
+await sleep(2500)
+if (await modalUp()) { await page.mouse.click(20, 400); await sleep(2000) }  // backdrop click
+if (await modalUp()) await abort(7, 'SOS MODAL WOULD NOT CLOSE — abort')
 await sleep(2000)
 
 // 9. Judge console: ALL five scenarios, each visibly reacting, then live restore
+await ensureTicker()
 const opened = await clickText('judge panel') || await clickText('🧑')
 const panelVisible = await page.evaluate(() => !!document.querySelector('[role="dialog"]'))
 if (!opened || !panelVisible) await abort(3, 'JUDGE PANEL FAILED — abort')
 await sleep(3000)
 for (const [label, dwell] of [
-  ['heavy rainfall', 8000], ['heatwave', 8000], ['thunderstorm', 8000],
-  ['flood risk', 11000],    // longest: the emergency cascade fires
-  ['smog', 8000],
+  ['heavy rainfall', 12000], ['heatwave', 12000], ['thunderstorm', 12000],
+  ['flood risk', 16000],    // longest: the emergency cascade fires
+  ['smog', 12000],
 ]) {
   await clickText(label)
   await sleep(dwell)
 }
 await clickText('live data')                          // snap back to real observations
-await sleep(5000)
+await sleep(8000)
 await page.evaluate(() => {
   const btn = [...document.querySelectorAll('button')].find((b) =>
     /close|✕|×/i.test(b.innerText) || /close/i.test(b.getAttribute('aria-label') || ''))
